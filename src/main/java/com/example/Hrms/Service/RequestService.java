@@ -197,6 +197,9 @@ public class RequestService {
         /*
          * Prevent duplicate pending request
          * for an existing candidate.
+         *
+         * Only a pending HR status-change request
+         * should block another HR status-change request.
          */
         if (candidateId != null) {
 
@@ -210,14 +213,41 @@ public class RequestService {
 
             if (existingRequest.isPresent()) {
 
-                Request existing =
-                        existingRequest.get();
+                Request existing = existingRequest.get();
 
-                throw new RuntimeException(
-                        capitalize(type)
-                                + " request already sent by "
-                                + existing.getRequestedByName()
-                );
+                Users existingRequester =
+                        userRepository.findById(
+                                existing.getRequestedById()
+                        ).orElse(null);
+
+                /*
+                 * Only an HR's pending status request
+                 * should block another status request.
+                 */
+                if ("status_change".equalsIgnoreCase(type)
+                        && existingRequester != null
+                        && "hr".equalsIgnoreCase(
+                                existingRequester.getRole()
+                        )) {
+
+                    throw new RuntimeException(
+                            "Status_change request already sent by "
+                                    + existing.getRequestedByName()
+                    );
+                }
+
+                /*
+                 * For other request types,
+                 * keep the existing duplicate protection.
+                 */
+                if (!"status_change".equalsIgnoreCase(type)) {
+
+                    throw new RuntimeException(
+                            capitalize(type)
+                                    + " request already sent by "
+                                    + existing.getRequestedByName()
+                    );
+                }
             }
         }
 

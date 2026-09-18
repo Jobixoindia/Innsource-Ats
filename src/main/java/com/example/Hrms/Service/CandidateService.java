@@ -109,7 +109,6 @@ public class CandidateService {
 
         boolean statusChanged =
                 !oldStatus.equalsIgnoreCase(newStatus);
-
         if (statusChanged) {
 
             if (existing.getRecruiter() == null
@@ -129,23 +128,53 @@ public class CandidateService {
                             )
                     );
 
-            if ("hr".equalsIgnoreCase(
-                    assignedRecruiter.getRole()
-            )) {
+            Users updatedBy =
+                    userRepository.findById(updatedById)
+                            .orElseThrow(() ->
+                                    new RuntimeException(
+                                            "Updating user not found"
+                                    )
+                            );
 
-                if (!"database".equalsIgnoreCase(newStatus)) {
+            String updaterRole =
+                    String.valueOf(updatedBy.getRole())
+                            .trim()
+                            .toLowerCase();
+
+            String assignedRecruiterRole =
+                    String.valueOf(assignedRecruiter.getRole())
+                            .trim()
+                            .toLowerCase();
+
+            /*
+             * MANAGER / CEO
+             * ----------------
+             * They can change the status directly,
+             * even when the candidate is assigned to HR.
+             */
+            if ("manager".equals(updaterRole)
+                    || "ceo".equals(updaterRole)) {
+
+                // Direct status change. No approval required.
+
+            }
+
+            /*
+             * HR
+             * ----------------
+             * HR can directly move back to Database.
+             * Other status changes require the existing
+             * approval flow.
+             */
+            else if ("hr".equals(updaterRole)) {
+
+                if ("hr".equals(assignedRecruiterRole)
+                        && !"database".equalsIgnoreCase(newStatus)) {
 
                     throw new RuntimeException(
                             "Status changes require Manager or CEO approval"
                     );
                 }
-
-            } else if ("manager".equalsIgnoreCase(
-                    assignedRecruiter.getRole()
-            )) {
-
-                // Manager-assigned candidates can change status directly.
-
             }
         }
 
